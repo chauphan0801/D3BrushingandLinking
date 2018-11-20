@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8"/>
+   <script type="text/javascript" src="d3.js"></script>
+    <style>
+    body {
+      font: 12px sans-serif;
+    }
+    .tick > line {
+        fill: none;
+        stroke: black;
+    }
+    .tick > text {
+        fill: black;
+    }
+    .selected {
+        stroke: red;
+        fill:red;
+    }
+    .selected2 {
+        stroke: blue;
+        fill:blue;
+    }
+    path.domain {
+        fill: none;
+        stroke-width: 2px;
+        stroke: black;
+    }
+    #wrapper {
+        clear:both;
+    }
+    #chart1 {
+        float:left;
+    }
+    #chart2{
+        float:left;
+    }
+    #chart3 {
+        float:left;
+        margin-top: 30px;
+        margin-left: 20px;
+    }
+/*    .node.brush{
+        fill:#f00;
+    }*/
+    .brush .extent {
+        fill-opacity: .1;
+        stroke: #fff;
+        shape-rendering: crispEdges;
+    }
+    </style>
+   </head>
+   <body>
+    <h1>p4</h1>
+   <div id="wrapper">
+        <div id="chart1">
+           </div>
+      <div id="chart2">
+          </div>
+      <div id="chart3">
+                <strong>SATM Score:</strong> <span id="satm"></span><br/>
+                <strong>SATV Score:</strong> <span id="satv"></span><br/>
+                <strong>ACT Score:</strong> <span id="act"></span><br/>
+                <strong>GPA:</strong> <span id="gpa"></span><br/>
+         </div>
+   </div>
+  <script>
+
+    var width =500;
+    var height= 500;
+
+
+    d3.csv("calvinCollegeSeniorScores.csv", function(csv) {
+        for (var i=0; i<csv.length; ++i) {
+            csv[i].GPA = Number(csv[i].GPA);
+            csv[i].SATM = Number(csv[i].SATM);
+            csv[i].SATV = Number(csv[i].SATV);
+            csv[i].ACT = Number(csv[i].ACT);
+        }
+        var satmExtent = d3.extent(csv, function(row) { return row.SATM; });
+        var satvExtent = d3.extent(csv, function(row) { return row.SATV; });
+        var actExtent = d3.extent(csv,  function(row) { return row.ACT;  });
+        var gpaExtent = d3.extent(csv,  function(row) {return row.GPA;   });
+
+
+        var satExtents = {
+        "SATM": satmExtent,
+        "SATV": satvExtent
+        };
+
+
+        var xScale = d3.scale.linear().domain(satmExtent).range([50, 470]);
+        var yScale = d3.scale.linear().domain(satvExtent).range([470, 30]);
+
+        var xScale2 = d3.scale.linear().domain(actExtent).range([50, 470]);
+        var yScale2 = d3.scale.linear().domain(gpaExtent).range([470, 30]);
+
+        var xAxis = d3.svg.axis().scale(xScale);
+        var yAxis = d3.svg.axis().scale(yScale);
+
+        var xAxis2 = d3.svg.axis().scale(xScale2);
+        var yAxis2 = d3.svg.axis().scale(yScale2);
+
+        yAxis.orient("left");
+        yAxis2.orient("left");
+
+        var chart1 = d3.select("#chart1")
+                        .append("svg:svg")
+                        .attr("width",width)
+                        .attr("height",height);
+        var chart2 = d3.select("#chart2")
+                        .append("svg:svg")
+                        .attr("width",width)
+                        .attr("height",height);
+
+
+
+         /******************************************
+
+            ADD BRUSHING CODE HERE
+
+
+
+         ******************************************/
+
+        var brush1 = d3.svg.brush()
+        .x(xScale)
+        .y(yScale)
+        .extent([[0, 0], [300, 300]])
+        .on("brush", brushmove)
+
+
+
+        var container1 = chart1.append("g").attr("class", "brush")
+            .call(brush1);
+
+
+        chart1.selectAll(".end").data(brush1.extent())
+            .enter()
+            .append("g")
+            .attr("class", function(d) {
+                return "end";
+            })
+
+
+        function brushmove() {
+            container2.call(brush2.clear());
+            extent = brush1.extent();
+            highlight();
+        }
+
+        function highlight(){
+            chart1.selectAll(".end").data(extent).attr("transform", function(d) {
+                // clear graph when end brush
+                chart1.selectAll("circle").classed("selected", false);
+                chart2.selectAll("circle").classed("selected2", false);
+
+                //highlight brushed circles
+                chart2.selectAll("circle")
+                    .filter(function(d) {
+                      //console.log(extent[0][0]);
+                      //console.log(d);
+                        temp2 = d.SATM >= extent[0][0]
+                                && d.SATM <= extent[1][0]
+                                && d.SATV <= extent[1][1]
+                                //console.log(extent[0][0]);
+                                //console.log(d);
+                                && d.SATV >= extent[0][1];
+                        if (temp2) {
+                            return temp2;
+                        }
+
+                    }).classed("selected2", true);
+                    res = "translate(" + d[0]+ ","
+                                            + d[1]
+                                            + ")";
+                    return res;
+            });
+
+        }
+
+
+        //data display
+        var temp1= chart1.selectAll("circle")
+           .data(csv)
+           .enter().append("circle")
+           .style("stroke", "none")
+           .attr("cx", function(d) {
+                return xScale(d.SATM);
+            })
+           .attr("cy", function(d) {
+                return yScale(d.SATV);
+             })
+           .attr("r", 5)
+
+
+
+           //when clicking each dot
+           chart1.selectAll("circle").on("click", function(d, i){
+            //cleared all highlighted
+                chart1.selectAll("circle")
+                    .classed("selected", false);
+                chart2.selectAll("circle")
+                    .classed("selected2", false);
+
+                //styling clicked circle
+                chart2.selectAll("circle")
+                    .filter(function(d) {
+                       filt = d === csv[i];
+                       return (filt);
+                }).classed("selected2", true);
+
+                //update chart 3 info
+                chart2.selectAll("circle")
+                    .filter(function(d) {
+                       filt = d === csv[i];
+                        if (filt) {
+                           document.getElementById("satm").innerHTML = d.SATM;
+                           document.getElementById("satv").innerHTML = d.SATV;
+                           document.getElementById("gpa").innerHTML = d.GPA;
+                           document.getElementById("act").innerHTML = d.ACT;
+                       }
+                       return (filt);
+                   })
+
+           });
+
+
+
+        var brush2 = d3.svg.brush()
+            .x(xScale2)
+            .y(yScale2)
+            .extent([[10, 10], [width, height]])
+            .on("brush", brushmove2);
+
+        container2 = chart2.append("g")
+            .attr("class", "brush")
+            .call(brush2);
+
+
+        chart2.selectAll(".end")
+            .data(brush2.extent())
+            .enter()
+            .append("g")
+            .attr("class", function(d){
+                return "end"
+            })
+
+
+        function brushmove2() {
+            container1.call(brush1.clear());
+            extent2 = brush2.extent();
+            highlight2();
+        }
+
+        function highlight2(){
+            chart2.selectAll(".end").data(extent2).attr("transform", function(d) {
+                // clear graph when end brush
+                chart2.selectAll("circle").classed("selected2", false);
+                chart1.selectAll("circle").classed("selected", false);
+
+                //highlight brushed circles
+                chart2.selectAll("circle").classed("selected2", false);
+                    chart1.selectAll("circle").classed("selected", false);
+                    chart1.selectAll("circle")
+                        .filter(function(d) {
+                            temp = (d.ACT >= extent2[0][0]
+                            && d.GPA <= extent2[1][1]
+                            && d.ACT <= extent2[1][0]
+                            && d.GPA >= extent2[0][1]);
+                            //console.log(temp);
+                            if(temp)
+                                return temp;
+
+                        }).classed("selected",true);
+                        res = "translate("
+                                +d[0]
+                                + ","
+                                + d[1]
+                                + ")";
+                        return res;
+                });
+
+        }
+
+        //data display
+        var temp2= chart2.selectAll("circle").data(csv)
+            .enter().append("circle")
+            .style("stroke", "none")
+            .attr("cx", function(d) {
+                return xScale2(d.ACT);
+            })
+            .attr("cy", function(d) {
+                return yScale2(d.GPA);
+                 })
+            .attr("r", 5)
+            .on("click", function(d,i){
+                chart2.selectAll("circle")
+                    .classed("selected2", false);
+                chart1.selectAll("circle")
+                    .classed("selected", false);
+                chart1.selectAll("circle")
+                    .filter(function(d) {
+                        filt = d === csv[i]
+                        //console.log(filt);
+                        ;return (filt);
+                    }).classed("selected", true);
+                chart1.selectAll("circle")
+                    .filter(function(d) {
+                        filt = d === csv[i];
+                        if (filt) {
+                            document.getElementById("act").innerHTML = d.ACT;
+                            document.getElementById("gpa").innerHTML = d.GPA;
+                            document.getElementById("satm").innerHTML = d.SATM;
+                            document.getElementById("satv").innerHTML = d.SATV;
+                        }
+                        return (filt);
+                    })
+            });
+
+
+        //axis labels
+        chart1 // or something else that selects the SVG element in your visualizations
+            .append("g") // create a group node
+            .attr("transform", "translate(0,"+ (width -30)+ ")")
+            .call(xAxis) // call the axis generator
+            .append("text")
+            .attr("class", "label")
+            .attr("x", width-16)
+            .attr("y", -6)
+            .style("text-anchor", "end")
+            .text("SATM");
+        chart1 // or something else that selects the SVG element in your visualizations
+            .append("g") // create a group node
+            .attr("transform", "translate(50, 0)")
+            .call(yAxis)
+            .append("text")
+            .attr("class", "label")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 6)
+            .attr("dy", ".71em")
+            .style("text-anchor", "end")
+            .text("SATV");
+        chart2 // or something else that selects the SVG element in your visualizations
+            .append("g") // create a group node
+            .attr("transform", "translate(0,"+ (width -30)+ ")")
+            .call(xAxis2)
+            .append("text")
+            .attr("class", "label")
+            .attr("x", width-16)
+            .attr("y", -6)
+            .style("text-anchor", "end")
+            .text("ACT");
+        chart2 // or something else that selects the SVG element in your visualizations
+            .append("g") // create a group node
+            .attr("transform", "translate(50, 0)")
+            .call(yAxis2)
+            .append("text")
+            .attr("class", "label")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 6)
+            .attr("dy", ".71em")
+            .style("text-anchor", "end")
+            .text("GPA");
+     });
+  </script>
+  </body>
+</html>
